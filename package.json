@@ -31,16 +31,16 @@
     "devops",
     "ci-cd"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": "Ravi Choudhary knowledgemithila@gmail.com",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/secretAnalyzer.git"
+    "url": "https://github.com/ravi-choudhary9708/secretAnalyzer.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/secretAnalyzer/issues"
+    "url": "https://github.com/ravi-choudhary9708/secretAnalyzer/issues"
   },
-  "homepage": "https://github.com/yourusername/secretAnalyzer#readme",
+  "homepage": "https://github.com/ravi-choudhary9708/secretAnalyzer#readme",
   "engines": {
     "node": ">=18.0.0"
   },
