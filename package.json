@@ -1,19 +1,67 @@
 {
-  "name": "secret-analyzer",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@ravichy9708/secret-scan-cli",
+  "version": "1.0.0",
+  "description": "🔍 AI-powered CLI tool to scan files and repositories for exposed secrets and credentials",
+  "main": "dist/cli/scan.js",
+  "bin": {
+    "secret-scan": "./dist/cli/scan.js"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "scan": "tsx cli/scan.ts",
+    "scan:help": "tsx cli/scan.ts --help",
+    "build:cli": "tsc -p tsconfig.cli.json"
   },
+  "keywords": [
+    "security",
+    "secrets",
+    "scanner",
+    "cli",
+    "credentials",
+    "api-keys",
+    "aws",
+    "github",
+    "stripe",
+    "secret-detection",
+    "ai-powered",
+    "code-security",
+    "devops",
+    "ci-cd"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/secretAnalyzer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/secretAnalyzer/issues"
+  },
+  "homepage": "https://github.com/yourusername/secretAnalyzer#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "@huggingface/inference": "^4.13.5",
+    "chalk": "^4.1.2",
     "clsx": "^2.1.1",
+    "commander": "^14.0.2",
+    "dotenv": "^17.2.3",
     "framer-motion": "^12.26.1",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
+    "ora": "^5.4.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "simple-git": "^3.30.0",
@@ -27,6 +75,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }

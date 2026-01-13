@@ -1,57 +1,22 @@
-import { HfInference } from '@huggingface/inference';
-
-// AI Analysis Interfaces
-export interface AIAnalysis {
-    isRealThreat: boolean;
-    confidence: number; // 0-100
-    reasoning: string;
-}
-
-export interface SecretClassification {
-    type: string;
-    probability: number; // 0-100
-}
-
-export interface RemediationStep {
-    step: number;
-    title: string;
-    description: string;
-    command?: string;
-    url?: string;
-}
-
-export interface RemediationSteps {
-    immediate: RemediationStep[];
-    followUp: RemediationStep[];
-    prevention: RemediationStep[];
-}
-
-export interface SecuritySummary {
-    overallRisk: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-    totalFindings: number;
-    criticalCount: number;
-    highCount: number;
-    mediumCount: number;
-    lowCount: number;
-    summary: string;
-    businessImpact: string;
-    actionItems: string[];
-    timeline: string;
-}
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.analyzeContext = analyzeContext;
+exports.classifySecret = classifySecret;
+exports.generateRemediation = generateRemediation;
+exports.generateSecuritySummary = generateSecuritySummary;
+exports.isAIAvailable = isAIAvailable;
+const inference_1 = require("@huggingface/inference");
 // Initialize Hugging Face Inference
 function getHfClient() {
     const apiKey = process.env.HF_API_KEY;
     if (!apiKey) {
         throw new Error('HF_API_KEY is not configured');
     }
-    return new HfInference(apiKey);
+    return new inference_1.HfInference(apiKey);
 }
-
 // Helper function to call Hugging Face with structured output
-async function callHfModel(prompt: string): Promise<string> {
+async function callHfModel(prompt) {
     const hf = getHfClient();
-
     try {
         const response = await hf.chatCompletion({
             model: 'meta-llama/Llama-3.3-70B-Instruct',
@@ -64,77 +29,17 @@ async function callHfModel(prompt: string): Promise<string> {
             max_tokens: 1000,
             temperature: 0.3,
         });
-
         return response.choices[0].message.content || '';
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Hugging Face API error:', error);
         throw error;
     }
 }
-
-// Helper function to clean and parse JSON from AI responses
-function cleanAndParseJSON(text: string): any {
-    try {
-        // 1. Try simple trim first
-        let cleaned = text.trim();
-
-        // 2. Extract JSON if it's wrapped in markdown code blocks
-        const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        if (jsonMatch) {
-            cleaned = jsonMatch[1].trim();
-        } else {
-            // 3. If no code blocks, try to find the start and end of JSON { } or [ ]
-            const firstBrace = cleaned.indexOf('{');
-            const lastBrace = cleaned.lastIndexOf('}');
-            const firstBracket = cleaned.indexOf('[');
-            const lastBracket = cleaned.lastIndexOf(']');
-
-            let start = -1;
-            let end = -1;
-
-            if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-                start = firstBrace;
-                end = lastBrace;
-            } else if (firstBracket !== -1) {
-                start = firstBracket;
-                end = lastBracket;
-            }
-
-            if (start !== -1 && end !== -1 && end > start) {
-                cleaned = cleaned.substring(start, end + 1);
-            }
-        }
-
-        // 4. Fix common JSON issues from LLMs
-        // Remove unescaped newlines within strings
-        cleaned = cleaned.replace(/\n/g, (match, offset, string) => {
-            // Check if we are inside a string
-            let insideString = false;
-            for (let i = 0; i < offset; i++) {
-                if (string[i] === '"' && (i === 0 || string[i - 1] !== '\\')) {
-                    insideString = !insideString;
-                }
-            }
-            return insideString ? '\\n' : '\n';
-        });
-
-        return JSON.parse(cleaned);
-    } catch (error) {
-        console.error('Failed to parse JSON from AI response:', error);
-        console.error('Raw response snippet:', text.substring(0, 500));
-        throw error;
-    }
-}
-
 /**
  * Context-Aware Analysis - Determines if a finding is a real threat
  */
-export async function analyzeContext(
-    secretType: string,
-    value: string,
-    context: string,
-    filename?: string
-): Promise<AIAnalysis> {
+async function analyzeContext(secretType, value, context, filename) {
     try {
         const prompt = `You are a security expert analyzing potential secret leaks. Analyze this finding and determine if it's a real threat.
 
@@ -159,16 +64,20 @@ Respond with ONLY valid JSON (no markdown, no code blocks, no extra text):
   "confidence": number (0-100),
   "reasoning": "brief explanation of your decision"
 }`;
-
         const response = await callHfModel(prompt);
-        const analysis = cleanAndParseJSON(response);
-
+        // Clean response - remove markdown code blocks if present
+        const cleanedResponse = response
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim();
+        const analysis = JSON.parse(cleanedResponse);
         return {
             isRealThreat: analysis.isRealThreat,
             confidence: analysis.confidence,
             reasoning: analysis.reasoning
         };
-    } catch (error) {
+    }
+    catch (error) {
         console.error('AI Analysis error:', error);
         // Fallback: assume it's a real threat if AI fails
         return {
@@ -178,14 +87,10 @@ Respond with ONLY valid JSON (no markdown, no code blocks, no extra text):
         };
     }
 }
-
 /**
  * Smart Secret Classification - Identifies secret type with probabilities
  */
-export async function classifySecret(
-    value: string,
-    context: string
-): Promise<SecretClassification[]> {
+async function classifySecret(value, context) {
     try {
         const prompt = `You are a security expert. Identify the type of this secret or credential with probability scores.
 
@@ -214,31 +119,29 @@ Respond with ONLY valid JSON (no markdown, no code blocks, no extra text) with u
     {"type": "Another Possibility", "probability": 3}
   ]
 }`;
-
         const response = await callHfModel(prompt);
-        const data = cleanAndParseJSON(response);
+        const cleanedResponse = response
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim();
+        const data = JSON.parse(cleanedResponse);
         return data.classifications;
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Classification error:', error);
         return [{
-            type: 'Unknown Secret',
-            probability: 50
-        }];
+                type: 'Unknown Secret',
+                probability: 50
+            }];
     }
 }
-
 /**
  * Generate Custom Remediation Steps
  */
-export async function generateRemediation(
-    secretType: string,
-    riskLevel: string,
-    value: string
-): Promise<RemediationSteps> {
+async function generateRemediation(secretType, riskLevel, value) {
     try {
         // Mask the secret value for safety
         const maskedValue = value.substring(0, 8) + '***' + value.substring(value.length - 4);
-
         const prompt = `You are a security expert. Generate specific, actionable remediation steps for this exposed secret.
 
 Secret Type: ${secretType}
@@ -279,60 +182,63 @@ Respond with ONLY valid JSON (no markdown, no code blocks, no extra text):
   "followUp": [...],
   "prevention": [...]
 }`;
-
         const response = await callHfModel(prompt);
-        const steps = cleanAndParseJSON(response);
+        const cleanedResponse = response
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim();
+        const steps = JSON.parse(cleanedResponse);
         return steps;
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Remediation generation error:', error);
         return {
             immediate: [{
-                step: 1,
-                title: 'Revoke the exposed credential',
-                description: 'Immediately disable or revoke this credential in the relevant service console.',
-                url: 'https://console.aws.amazon.com/iam/'
-            }],
+                    step: 1,
+                    title: 'Revoke the exposed credential',
+                    description: 'Immediately disable or revoke this credential in the relevant service console.',
+                    url: 'https://console.aws.amazon.com/iam/'
+                }],
             followUp: [{
-                step: 1,
-                title: 'Review access logs',
-                description: 'Check for any unauthorized usage of this credential.'
-            }],
+                    step: 1,
+                    title: 'Review access logs',
+                    description: 'Check for any unauthorized usage of this credential.'
+                }],
             prevention: [{
-                step: 1,
-                title: 'Use environment variables',
-                description: 'Store secrets in .env files and add them to .gitignore.'
-            }]
+                    step: 1,
+                    title: 'Use environment variables',
+                    description: 'Store secrets in .env files and add them to .gitignore.'
+                }]
         };
     }
 }
-
 /**
  * Generate Executive Security Summary
  */
-export async function generateSecuritySummary(
-    findings: any[]
-): Promise<SecuritySummary> {
+async function generateSecuritySummary(findings) {
     try {
         // Count findings by risk level
         const criticalCount = findings.filter(f => f.riskLevel === 'CRITICAL').length;
         const highCount = findings.filter(f => f.riskLevel === 'HIGH').length;
         const mediumCount = findings.filter(f => f.riskLevel === 'MEDIUM').length;
         const lowCount = findings.filter(f => f.riskLevel === 'LOW').length;
-
         // Determine overall risk
-        let overallRisk: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
-        if (criticalCount > 0) overallRisk = 'CRITICAL';
-        else if (highCount > 2) overallRisk = 'CRITICAL';
-        else if (highCount > 0) overallRisk = 'HIGH';
-        else if (mediumCount > 3) overallRisk = 'HIGH';
-        else if (mediumCount > 0) overallRisk = 'MEDIUM';
-
+        let overallRisk = 'LOW';
+        if (criticalCount > 0)
+            overallRisk = 'CRITICAL';
+        else if (highCount > 2)
+            overallRisk = 'CRITICAL';
+        else if (highCount > 0)
+            overallRisk = 'HIGH';
+        else if (mediumCount > 3)
+            overallRisk = 'HIGH';
+        else if (mediumCount > 0)
+            overallRisk = 'MEDIUM';
         const findingsSummary = findings.map(f => ({
             type: f.type,
             riskLevel: f.riskLevel,
             line: f.line
         }));
-
         const prompt = `You are a security expert. Generate a professional executive security summary for these findings.
 
 Total Findings: ${findings.length}
@@ -376,10 +282,12 @@ Respond with ONLY valid JSON (no markdown, no code blocks, no extra text):
   "actionItems": ["action 1", "action 2", ...],
   "timeline": "Timeline recommendations"
 }`;
-
         const response = await callHfModel(prompt);
-        const summaryData = cleanAndParseJSON(response);
-
+        const cleanedResponse = response
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim();
+        const summaryData = JSON.parse(cleanedResponse);
         return {
             overallRisk,
             totalFindings: findings.length,
@@ -392,7 +300,8 @@ Respond with ONLY valid JSON (no markdown, no code blocks, no extra text):
             actionItems: summaryData.actionItems,
             timeline: summaryData.timeline
         };
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Summary generation error:', error);
         return {
             overallRisk: findings.some(f => f.riskLevel === 'CRITICAL') ? 'CRITICAL' : 'HIGH',
@@ -408,10 +317,9 @@ Respond with ONLY valid JSON (no markdown, no code blocks, no extra text):
         };
     }
 }
-
 /**
  * Check if AI is available
  */
-export function isAIAvailable(): boolean {
+function isAIAvailable() {
     return !!process.env.HF_API_KEY;
 }

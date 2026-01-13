@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "./dist",
+        "strict": true,
+        "resolveJsonModule": true
+    },
+    "include": [
+        "cli/**/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
