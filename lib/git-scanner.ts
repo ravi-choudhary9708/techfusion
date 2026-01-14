@@ -118,14 +118,23 @@ export async function cloneRepository(
     tempDir: string
 ): Promise<void> {
     const git = simpleGit();
+    git.env({ ...process.env, GIT_TERMINAL_PROMPT: '0' });
+
+    // Ensure tempDir exists
+    if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+    }
 
     try {
+        console.log(`Executing git clone ${repoUrl} ${tempDir} --depth 1 --branch ${branch}`);
         await git.clone(repoUrl, tempDir, ['--depth', '1', '--branch', branch]);
     } catch (error: any) {
         // If branch doesn't exist, try master
         if (branch === 'main' && error.message.includes('Remote branch main not found')) {
+            console.log(`Branch 'main' not found, trying 'master'...`);
             await git.clone(repoUrl, tempDir, ['--depth', '1', '--branch', 'master']);
         } else {
+            console.error(`Git Error: ${error.message}`);
             throw error;
         }
     }
@@ -148,15 +157,22 @@ export async function cleanupTempDir(tempDir: string): Promise<void> {
  * Validate GitHub repository URL
  */
 export function validateRepoUrl(url: string): boolean {
+    // Basic check for github.com
+    if (!url.includes('github.com/')) return false;
+
+    // Remove trailing slash if present for validation
+    const normalizedUrl = url.replace(/\/$/, '');
     const githubPattern = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+(\.git)?$/;
-    return githubPattern.test(url);
+    return githubPattern.test(normalizedUrl);
 }
 
 /**
  * Get repository name from URL
  */
 export function getRepoName(url: string): string {
-    const match = url.match(/github\.com\/([\w-]+)\/([\w.-]+?)(\.git)?$/);
+    // Remove trailing slash if present
+    const normalizedUrl = url.replace(/\/$/, '');
+    const match = normalizedUrl.match(/github\.com\/([\w-]+)\/([\w.-]+?)(\.git)?$/);
     if (match) {
         return `${match[1]}/${match[2]}`;
     }

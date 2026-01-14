@@ -36,20 +36,34 @@ export async function POST(req: NextRequest) {
 
         // Create temporary directory
         const timestamp = Date.now();
-        const repoName = getRepoName(repoUrl).replace('/', '-');
-        tempDir = path.join(os.tmpdir(), `secret-scan-${repoName}-${timestamp}`);
+        const repoNameString = getRepoName(repoUrl).replace('/', '-');
+        const rootDir = process.cwd();
+        tempDir = path.join(rootDir, '.temp', `scan-${repoNameString}-${timestamp}`);
+
+        // Ensure .temp exists
+        const dotTemp = path.join(rootDir, '.temp');
+        if (!fs.existsSync(dotTemp)) {
+            fs.mkdirSync(dotTemp, { recursive: true });
+        }
+
+        console.log(`Repository scan starting for ${repoUrl} in ${tempDir}`);
 
         // Clone repository
         try {
+            console.log(`Cloning repository ${repoUrl} branch ${branch}...`);
             await cloneRepository(repoUrl, branch, tempDir);
+            console.log(`Clone complete.`);
         } catch (cloneError: any) {
+            console.error(`Clone failed: ${cloneError.message}`);
             return NextResponse.json({
                 error: `Failed to clone repository: ${cloneError.message}. Make sure the repository is public and the branch exists.`
             }, { status: 400 });
         }
 
         // Get all text files
+        console.log(`Discovering text files in ${tempDir}...`);
         const textFiles = await getAllTextFiles(tempDir);
+        console.log(`Found ${textFiles.length} candidate text files.`);
 
         if (textFiles.length === 0) {
             await cleanupTempDir(tempDir);

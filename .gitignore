@@ -10,6 +10,7 @@
 !.yarn/releases
 !.yarn/versions
 /test_files
+/.temp
 
 # testing
 /coverage

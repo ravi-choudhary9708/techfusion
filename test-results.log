@@ -1,0 +1,9 @@
+Testing repo scan for: https://github.com/ravi-choudhary9708/secretAnalyzer
+Temp dir: C:\Users\Admin\AppData\Local\Temp\test-scan-1768359837357
+Step 1: Cloning...
+Test failed: Cloning into 'C:\Users\Admin\AppData\Local\Temp\test-scan-1768359837357'...
+remote: Repository not found.
+fatal: repository 'https://github.com/ravi-choudhary9708/secretAnalyzer/' not found
+
+Step 3: Cleanup...
+Cleanup complete.
