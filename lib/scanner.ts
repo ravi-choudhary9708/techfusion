@@ -8,8 +8,7 @@ export interface Finding {
     riskScore: number;
     riskLevel: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
     context: string;
-    file?: string; // For repository scans and CLI
-    // AI-powered fields
+    file?: string; 
     aiAnalysis?: AIAnalysis;
     classification?: SecretClassification[];
     remediation?: RemediationSteps;
